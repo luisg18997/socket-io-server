@@ -5,37 +5,35 @@ const bodyParser = require('body-parser');
 const myDebbuger = require('debug')(appName);
 const socketIO = require('socket.io');
 
-
-// midlewares
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: true}));
-
-//routes
-app.get('/', (req, res) => {
-  res.send('hello world');
-})
+const route = require('./routes/route');
 
 //server listen
 const server = app.listen(5050, () => {
   myDebbuger('server is running on port: ', server.address().port);
 });
 
+// midlewares
+app.use(bodyParser.json());
+
+app.use(bodyParser.urlencoded({extended: true}));
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
+// route
+app.use('/', route);
 
 // connect of socket
-const io = socketIO(server);
+const io = socketIO(server, {
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  cookie: false
+});
 
 io.on('connection', (socket) => {
   myDebbuger('new connection: ', socket.id);
-  
-  socket.on('change color', (color) => {
-   // once we get a 'change color' event from one of our clients, we will send it to the rest of the clients
-   // we make use of the socket.emit method again with the argument given to use from the callback function above
-   myDebbuger('Color Changed to: ', color)
-   io.sockets.emit('change color', color)
- })
-
- // disconnect is fired when a client leaves the server
- socket.on('disconnect', () => {
-   myDebbuger('user disconnected')
- })
+  app.set('socketio', socket);
 })
